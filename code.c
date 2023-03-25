@@ -38,7 +38,6 @@ int main()
 	char pssPath[pss_size][60];             //PSS文件路径
 	char resPath[res_size][60];   //卷积结果文件路径
 	printf("请输入学号尾数：");
-    printf("\n");
 	scanf("%d",&studyID);
 
 	n1=get_path("请输入小区数目:",datePath);
