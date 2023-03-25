@@ -39,6 +39,7 @@ int main()
 	char resPath[res_size][60];   //卷积结果文件路径
 	printf("请输入学号尾数：");
 	scanf("%d",&studyID);
+	printf("\n");//11111111111111111111111111111111111
 
 	n1=get_path("请输入小区数目:",datePath);
 	for(i=0;i<n1;i++)
