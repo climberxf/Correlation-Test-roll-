@@ -18,6 +18,8 @@ typedef struct result
 {//卷积结果信息
 	int pos;//存放最大值的位置
 	float value;//存放最大值的值
+	float pss_id;//存放pss文件的id号
+	float data_id;//存放data文件id号
 }RESULT;
 
 float getPi(float a,float b);
@@ -45,7 +47,7 @@ int main()
 
 	for(i=0;i<n1;i++)
 	{//文件循环 
-		sprintf_s(dataPath,60,dPath,i);
+		sprintf_s(dataPath,60,dPath,i);                                      //如何路径改变
 		cellInfo[i].id=i;
 		get_averP(&cellInfo[i],dataPath);
 	}
@@ -60,8 +62,11 @@ int main()
 	float *pData=NULL,*dData=NULL;
 	printf("PSS-DATE\t最大位置\t最大值\n");
 
+	int maxRelaId[3]={0};//与pss最相关的data文件id
+	float max;
 	for(i=0;i<n2;i++)
 	{
+		max=0;
 		sprintf_s(pssPath,60,pPath,i);
 		p_count=getRow(pssPath);
 		pData=getDate(pssPath,p_count);
@@ -72,10 +77,19 @@ int main()
 			dData=getDate(dataPath,d_count);
 			roll(dData,pData,d_count,p_count,&res[k],i,cellInfo[j].id);
 			free(dData);
+			if(res[k].value>max)
+			{
+				maxRelaId[i]=res[k].data_id;
+				max=res[k].value;
+			}
 			printf("%d-%d\t%d\t%.3f\n",i,cellInfo[j].id,res[k].pos,res[k].value);
 			k++;
 		}
 		free(pData);
+	}
+	for(i=0;i<n2;i++)
+	{
+		printf("与PSS%d文件最相关的是:data%d文件\n",i,maxRelaId[i]);
 	}
 }
 /*********************************************************
@@ -183,7 +197,7 @@ void get_averP(CELL *cellInfo,char dataPath[])
 *修改记录：
 *v1.0    2023.3.15 
 *********************************************************/
-float* getDate(char path[],int count)
+float* getDate(char path[],int count)                                      //错误：函数的设置
 {
 	float *data=(float *)malloc(count*sizeof(float));
 	FILE *fp ;
@@ -214,11 +228,11 @@ float* getDate(char path[],int count)
 ***********************************************************************************/
 void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,int d)
 {
-	float I=0,Q=0,P_max,P;   //P_max为每两个卷积文件的最大的模
+	float I=0,Q=0,P_max,P;   //P_max为每两个卷积文件的最大的模                    
 	                         //I,Q分别是每次卷积的复数的实部和虚部的和
 	int i,j,k,position,row=0;
 	                         //position是最大相关的地方
-	char path[maxPath];      //结果文件的路径
+	char path[maxPath];      //结果文件的路径                       错误：只有一个文件
 	FILE *fp;
 	sprintf_s(path,maxPath,rPath,p,d);
 	d_count=d_count/2;       //文件的数据组有多少个
@@ -229,7 +243,7 @@ void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,in
 		exit(0);
 	}
 	
-	for(i=0;i<d_count-p_count+1;i++)
+	for(i=0;i<d_count-p_count+1;i++)                               //错误：超出范围
 	{
 		P=0;I=0;Q=0;
 		for(j=0,k=row;j<p_count*2-2;j+=2,k+=2)
@@ -250,4 +264,6 @@ void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,in
 	fclose(fp);
 	res->value=P_max;
 	res->pos=position;
+	res->pss_id=p;
+	res->data_id=d;//存入文件id
 }
