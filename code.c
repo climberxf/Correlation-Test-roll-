@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#define min 1e-15
 #define max_cell 20          //小区最大数量 
 #define pss_size 5
 #define res_size 20
-
+#define maxPath 60
+#define dPath "D:\\users\\desktop\\first date\\data%d.txt"//date文件路径
+#define pPath "D:\\users\\desktop\\first date\\PSS%d.txt"//PSS文件路径
+#define rPath "D:\\users\\desktop\\first date\\result%d-%d.xls"//结果EXCEL文件路径
 typedef struct cell
 {//小区信息 
 	int id;//小区号
@@ -18,74 +20,63 @@ typedef struct result
 	float value;//存放最大值的值
 }RESULT;
 
-int get_path(char warn[],char path[][60]);
 float getPi(float a,float b);
 void sort(CELL cellInfo[],int n);
 int getRow(char path[]);
-void get_averP(CELL *cellInfo,char datePath[]);
-void roll(char dPath[],char pPath[],char rPath[],RESULT *res);
+void get_averP(CELL *cellInfo,char dataPath[]);
+float* getDate(char path[],int count);
+void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,int d);
 
 
 int main()
 {				
-	FILE *fp;
 	float I,Q;    //I,Q分别为实部、虚部 
-	int i,j,k=0,n1,n2,n3,studyID;    //n1为实际小区数,n2为pss文件数，n3为result文件数 
-	char c; 
+	int i,j,n1,n2,k=0,studyID,i1;    //n1为实际小区数,n2为pss文件数，n3为result文件数 
 	CELL cellInfo[max_cell];     //小区数据 
 	RESULT res[res_size];        //最大相关结果
-	char datePath[max_cell][60];     //date文件路径
-	char pssPath[pss_size][60];             //PSS文件路径
-	char resPath[res_size][60];   //卷积结果文件路径
+	char dataPath[maxPath];     //date文件路径
+	char pssPath[maxPath];             //PSS文件路径
+	int d_count,p_count;               //data文件数据的数量及PSS文件数据的数量
+
 	printf("请输入学号尾数：");
 	scanf("%d",&studyID);
+	printf("data文件的数量为:");
+	scanf("%d",&n1);
 
-	n1=get_path("请输入小区数目:",datePath);
 	for(i=0;i<n1;i++)
 	{//文件循环 
+		sprintf_s(dataPath,60,dPath,i);
 		cellInfo[i].id=i;
-		get_averP(&cellInfo[i],datePath[i]);
+		get_averP(&cellInfo[i],dataPath);
 	}
 	sort(cellInfo,n1);
 	for(i=0;i<6;i++)
 	{//输出平均功率最大的前六个小区的编号 
 		printf("%d ",cellInfo[i].id);
 	}
-	printf("\n");
-	n2=get_path("请输PSS文件数目:",pssPath);
-	n3=get_path("请输入结果文件数目:",resPath);
-	k=0;
-	for(i=0;i<6;i++)
+	
+	printf("\n请输入PSS文件个数:");
+	scanf("%d",&n2);
+	float *pData=NULL,*dData=NULL;
+	printf("PSS-DATE\t最大位置\t最大值\n");
+
+	for(i=0;i<n2;i++)
 	{
-		for(j=0;j<n2;j++)
+		sprintf_s(pssPath,60,pPath,i);
+		p_count=getRow(pssPath);
+		pData=getDate(pssPath,p_count);
+		for(j=0;j<6;j++)
 		{
-			roll(datePath[cellInfo[i].id],pssPath[j],resPath[k],&res[k]);
-			printf("最大位置：%-5d 最大值：%.3f\n",res[k].pos,res[k].value);
+			sprintf_s(dataPath,60,dPath,cellInfo[j].id);
+			d_count=getRow(dataPath);
+			dData=getDate(dataPath,d_count);
+			roll(dData,pData,d_count,p_count,&res[k],i,cellInfo[j].id);
+			free(dData);
+			printf("%d-%d\t%d\t%.3f\n",i,cellInfo[j].id,res[k].pos,res[k].value);
 			k++;
 		}
+		free(pData);
 	}
-}
-/*********************************************************
-*函数功能：输入已知文件路径
-*函数原型： int get_path(char warn[],char path[][50])
-*函数说明： warn[]为提示语，path[][50]为路径数组
-*返回值：int型 返回路径文件的个数
-*创建人：奚兴发
-*修改记录：
-*v1.0    2023.3.15 
-*********************************************************/
-int get_path(char warn[],char path[][60])
-{
-	int i,n;
-	printf("%s",warn);
-	scanf("%d",&n);
-	getchar();
-	printf("请输入数据文件绝对路径：\n");
-	for(i=0;i<n;i++)
-	{
-		gets(path[i]);
-	} 
-	return n;
 }
 /*********************************************************
 *函数功能：计算每组数据功率 
@@ -163,14 +154,14 @@ int getRow(char path[])
 *修改记录：
 *v1.0    2023.3.15 
 *********************************************************/
-void get_averP(CELL *cellInfo,char datePath[])
+void get_averP(CELL *cellInfo,char dataPath[])
 {
 	float I,Q;
 	FILE *fp;
 	cellInfo->P=0;
-	if((fp=fopen(datePath,"r"))==NULL)
+	if((fp=fopen(dataPath,"r"))==NULL)
 	{//判断文件是否成功打开 
-		printf("Fail to open %s\n",datePath);
+		printf("Fail to open %s\n",dataPath);
 		exit(0);
 	}
 	while(!feof(fp))	
@@ -180,74 +171,83 @@ void get_averP(CELL *cellInfo,char datePath[])
 		fscanf(fp,"%f",&Q);
 		cellInfo->P+=getPi(I,Q);
 	}
-	cellInfo->P=cellInfo->P/(getRow(datePath)/2);//求平均功率 
+	cellInfo->P=cellInfo->P/(getRow(dataPath)/2);//求平均功率 
 	fclose(fp);
 }
+/*********************************************************
+*函数功能：获得路径path[]的文件的数据，存入申请的count大小的空间中
+*函数原型： float* getDate(char path[],int count)；
+*函数说明：path[]为文件路径，count为文件里的数据数量
+*返回值：float*型，返回申请空间的首地址
+*创建人：奚兴发
+*修改记录：
+*v1.0    2023.3.15 
+*********************************************************/
+float* getDate(char path[],int count)
+{
+	float *data=(float *)malloc(count*sizeof(float));
+	FILE *fp ;
+	int i=0;
+	if(fopen_s(&fp,path,"r"))
+	{
+		printf("fail to open int getDate()\n");
+		exit(0);
+	}
+	while(i<count)
+	{
+		fscanf(fp,"%f",&data[i]);
+		i++;
+	}
+	fclose(fp);
+	return data;
+}
 /************************************************************************************
-*函数功能：卷积dPath[],pPath[]里的数据，并将卷积的位置与数据写于
-rPath[]文件里，将卷积的最大值的位置与值存于结构体res里
-*函数原型： void roll(char dPath[],char pPath[],char rPath[],RESULT *res)
-*函数说明：dPath[],pPath[],rPath[]分别为date，pss，结果文件的路径，*res存入每次卷的结果
+*函数功能：卷积数组dData[],pData[]里的数据，并将卷积的位置与数据写于
+			path[]文件里，将卷积的最大值的位置与值存于结构体res里
+*函数原型： void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,int d)
+*函数说明：数组dData[],pData[]是要卷积的数据int d_count,int p_count分别是两个数组的大小，*res存入每次卷的结果
+			p,d分别是数组对应的PSS,data文件号
 *返回值：void型
 *创建人：奚兴发
 *修改记录：
 *v1.0    2023.3.22 
 ***********************************************************************************/
-void roll(char dPath[],char pPath[],char rPath[],RESULT *res)
+void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,int d)
 {
-	float a,b,c,d,I=0,Q=0,P_max,P;
-	int d_count=getRow(dPath)/2;
-	int p_count=getRow(pPath)/2,flag=0;
-	int i,j,position,row=1;
-	char ch;
-	FILE *fp1,*fp2,*fp3;
-	fp1=fopen(dPath,"r");
-	fp2=fopen(pPath,"r");
-	fp3=fopen(rPath,"w");
-	if(fp1==NULL||fp2==NULL||fp3==NULL)
+	float I=0,Q=0,P_max,P;   //P_max为每两个卷积文件的最大的模
+	                         //I,Q分别是每次卷积的复数的实部和虚部的和
+	int i,j,k,position,row=0;
+	                         //position是最大相关的地方
+	char path[maxPath];      //结果文件的路径
+	FILE *fp;
+	sprintf_s(path,maxPath,rPath,p,d);
+	d_count=d_count/2;       //文件的数据组有多少个
+	p_count=p_count/2;       //文件的数据组有多少个
+	if(fopen_s(&fp,path,"w"))
 	{
-		printf("Fail to open dPath,pPath and rPath\n");
+		printf("fail to open int roll()\n");
 		exit(0);
 	}
+	
 	for(i=0;i<d_count-p_count+1;i++)
 	{
 		P=0;I=0;Q=0;
-		while(!feof(fp2))
+		for(j=0,k=row;j<p_count*2-2;j+=2,k+=2)
 		{
-			a=0;b=0;c=0;d=0;
-			fscanf(fp1,"%f",&a);
-			fscanf(fp1,"%f",&b);
-			fscanf(fp2,"%f",&c);
-			fscanf(fp2,"%f",&d);
-			ch=fgetc(fp2);
-			if(fabs(c)>min&&fabs(d)>min)
-			{
-				I+=a*c-b*d;
-				Q+=a*d+b*c;
-			}
+			I+=dData[k]*pData[j]-dData[k+1]*pData[j+1];
+			Q+=dData[k]*pData[j+1]+dData[k+1]*pData[j];
 		}
 		P=getPi(I,Q);
-		fprintf(fp3,"%-16.3f %d\n",P,i);
+		fprintf(fp,"%d\t%.3f\t",i,P);//给EXCEL文件输入位置和对应的相关系数
 		if(P>P_max)
 		{
 			P_max=P;
 			position=i;
 		}
 		row+=2;    //row指示每次循环从第几排开始
-		rewind(fp2);
-		rewind(fp1);
-		flag=0;
-		while(flag<row-1)
-		{//将fp1返回下一次开始卷的地方
-			ch=fgetc(fp1);
-			if(ch=='\n')
-				flag++;
-		}
-		//printf("\n");
+		fprintf(fp,"\n");
 	}
-	fclose(fp1);
-	fclose(fp2);
-	fclose(fp3);
+	fclose(fp);
 	res->value=P_max;
 	res->pos=position;
 }
