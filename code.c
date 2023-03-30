@@ -47,11 +47,12 @@ int main()
 
 	for(i=0;i<n1;i++)
 	{//文件循环 
-		sprintf_s(dataPath,60,dPath,i);                                      //如何路径改变
+		sprintf_s(dataPath,60,dPath,i);
 		cellInfo[i].id=i;
 		get_averP(&cellInfo[i],dataPath);
 	}
 	sort(cellInfo,n1);
+	printf("平均功率最大的前六个小区的ID为:\n");
 	for(i=0;i<6;i++)
 	{//输出平均功率最大的前六个小区的编号 
 		printf("%d ",cellInfo[i].id);
@@ -60,7 +61,8 @@ int main()
 	printf("\n请输入PSS文件个数:");
 	scanf("%d",&n2);
 	float *pData=NULL,*dData=NULL;
-	printf("PSS-DATE\t最大位置\t最大值\n");
+	printf("相关检测结果:\n");
+	printf("PSS:ID-DATE:ID\t最大位置\t最大值\n");
 
 	int maxRelaId[3]={0};//与pss最相关的data文件id
 	float max;
@@ -82,7 +84,7 @@ int main()
 				maxRelaId[i]=res[k].data_id;
 				max=res[k].value;
 			}
-			printf("%d-%d\t%d\t%.3f\n",i,cellInfo[j].id,res[k].pos,res[k].value);
+			printf("%d-%-12d  %-14d  %-8.3f\n",i,cellInfo[j].id,res[k].pos,res[k].value);
 			k++;
 		}
 		free(pData);
@@ -135,7 +137,7 @@ void sort(CELL cellInfo[],int n)
 /*********************************************************
 *函数功能：计算文件的行数
 *函数原型： int getRow(char path[])
-*函数说明：path[]为路径 
+*函数说明：path[]为文件路径 
 *返回值：int型 返回文件的排数
 *创建人：奚兴发
 *修改记录：
@@ -197,7 +199,7 @@ void get_averP(CELL *cellInfo,char dataPath[])
 *修改记录：
 *v1.0    2023.3.15 
 *********************************************************/
-float* getDate(char path[],int count)                                      //错误：函数的设置
+float* getDate(char path[],int count)  
 {
 	float *data=(float *)malloc(count*sizeof(float));
 	FILE *fp ;
@@ -219,8 +221,8 @@ float* getDate(char path[],int count)                                      //错
 *函数功能：卷积数组dData[],pData[]里的数据，并将卷积的位置与数据写于
 			path[]文件里，将卷积的最大值的位置与值存于结构体res里
 *函数原型： void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,int d)
-*函数说明：数组dData[],pData[]是要卷积的数据int d_count,int p_count分别是两个数组的大小，*res存入每次卷的结果
-			p,d分别是数组对应的PSS,data文件号
+*函数说明：数组dData[],pData[]是要卷积的数据int d_count,int p_count
+           分别是两个数组的大小，*res存入每次卷的结果p,d分别是数组对应的PSS,data文件号
 *返回值：void型
 *创建人：奚兴发
 *修改记录：
@@ -232,7 +234,7 @@ void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,in
 	                         //I,Q分别是每次卷积的复数的实部和虚部的和
 	int i,j,k,position,row=0;
 	                         //position是最大相关的地方
-	char path[maxPath];      //结果文件的路径                       错误：只有一个文件
+	char path[maxPath];      //结果文件的路径
 	FILE *fp;
 	sprintf_s(path,maxPath,rPath,p,d);
 	d_count=d_count/2;       //文件的数据组有多少个
@@ -243,7 +245,7 @@ void roll(float* dData,float* pData,int d_count,int p_count,RESULT *res,int p,in
 		exit(0);
 	}
 	
-	for(i=0;i<d_count-p_count+1;i++)                               //错误：超出范围
+	for(i=0;i<d_count-p_count+1;i++)              
 	{
 		P=0;I=0;Q=0;
 		for(j=0,k=row;j<p_count*2-2;j+=2,k+=2)
